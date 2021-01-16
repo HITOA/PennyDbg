@@ -24,16 +24,16 @@ QVariant LoadedDllTableModel::data(const QModelIndex &index, int role) const {
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
             case 0:
-                return QString::fromWCharArray(lpPData->GetLoadedDllData(index.row())->fullPath);
+                return QString::fromWCharArray(lpPData->GetLoadedDllData(index.row())->fullName);
                 break;
             case 1:
                 return QString("0x%1").arg((quintptr)lpPData->GetLoadedDllData(index.row())->lpBaseOfDll, QT_POINTER_SIZE * 2, 16,QChar('0'));
                 break;
             case 2:
-                return QString::number(10);
+                return QString::number(lpPData->GetLoadedDllData(index.row())->dllMappedSize);
                 break;
             case 3:
-                return "AHAH";
+                return QString::number(lpPData->GetLoadedDllData(index.row())->dllDiskSize);
                 break;
             default:
                 break;

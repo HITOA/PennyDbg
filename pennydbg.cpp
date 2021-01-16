@@ -114,6 +114,28 @@ void PennyDbg::AddLoadedDllData(LoadedDllData loadedDllData) {
     emit loadedDll_GUI_update();
 }
 
+void PennyDbg::FillLoadedDllData(LPLoadedDllData lpLoadedDllData) {
+    PIMAGE_DOS_HEADER dllDumpDosHeader = (PIMAGE_DOS_HEADER)malloc(sizeof(IMAGE_DOS_HEADER));
+    PIMAGE_NT_HEADERS dllDumpNtHeader = (PIMAGE_NT_HEADERS)malloc(sizeof(IMAGE_NT_HEADERS));
+
+    SIZE_T bytesRead = 0;
+    BOOL rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), lpLoadedDllData->lpBaseOfDll, dllDumpDosHeader, sizeof(IMAGE_DOS_HEADER), &bytesRead);
+
+    if ((rpmRet == TRUE) && (dllDumpDosHeader->e_magic == IMAGE_DOS_SIGNATURE)) {
+        rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), (LPBYTE)lpLoadedDllData->lpBaseOfDll + dllDumpDosHeader->e_lfanew, dllDumpNtHeader, sizeof(IMAGE_NT_HEADERS), &bytesRead);
+        if ((rpmRet == TRUE) && (dllDumpNtHeader->Signature == IMAGE_NT_SIGNATURE)) {
+            lpLoadedDllData->dllMappedSize = dllDumpNtHeader->OptionalHeader.SizeOfImage;
+            std::ifstream module(lpLoadedDllData->fullPath, std::ios::binary);
+            module.seekg(0, module.end);
+            lpLoadedDllData->dllDiskSize = module.tellg();
+            module.close();
+        }
+    }
+
+    free(dllDumpNtHeader);
+    free(dllDumpDosHeader);
+}
+
 DWORD PennyDbg::OnExceptionDebugEvent(LPDEBUG_EVENT lpdebugEv){
     return DBG_CONTINUE;
 }
@@ -148,7 +170,7 @@ DWORD PennyDbg::OnLoadDllDebugEvent(LPDEBUG_EVENT lpdebugEv){
         wchar_t ntdllname[] = L"\\System32\\ntdll.dll";
         UINT dlen = GetWindowsDirectoryW(loadedDllData.fullPath, MAX_PATH);
         memcpy(loadedDllData.fullPath + dlen, ntdllname, sizeof(ntdllname) + 1);
-        loadedDllData.fullName = loadedDllData.fullPath + dlen + 20;
+        memcpy(loadedDllData.fullName, ntdllname + 10, sizeof(ntdllname) - 9);
         pData.SetSeenNTDLLLoad();
     }else {
         rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), loadDllDebugInfo->lpImageName, &lpModuleFileName, sizeof(LPCVOID), &bytesRead);
@@ -169,12 +191,22 @@ DWORD PennyDbg::OnLoadDllDebugEvent(LPDEBUG_EVENT lpdebugEv){
                     mbstowcs_s(&bytesRead, loadedDllData.fullPath, MAX_PATH, tcName, _TRUNCATE);
                 }
             }
+            int sIndex = 0;
+            for (int i = MAX_PATH; i > 0; i--) {
+                if (loadedDllData.fullPath[i] == L'\\' || loadedDllData.fullPath[i] == L'/') {
+                    sIndex = i;
+                    break;
+                }
+            }
+            memcpy(loadedDllData.fullName, loadedDllData.fullPath + sIndex + 1, sizeof(loadedDllData.fullName));
         }else {
             //Todo : Get filename with GetModuleFileNameEx
         }
     }
 
     loadedDllData.lpBaseOfDll = loadDllDebugInfo->lpBaseOfDll;
+
+    FillLoadedDllData(&loadedDllData);
 
     AddLoadedDllData(loadedDllData);
 

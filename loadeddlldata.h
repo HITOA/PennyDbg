@@ -7,9 +7,10 @@ typedef struct _LoadedDllData
 {
 public:
     wchar_t fullPath[MAX_PATH];
-    wchar_t *fullName;
+    wchar_t fullName[256];
     LPVOID lpBaseOfDll;
-    size_t dllSize;
+    size_t dllMappedSize; //In bytes
+    size_t dllDiskSize; //In bytes
 }LoadedDllData, *LPLoadedDllData;
 
 #endif // _LOADEDDLLDATA_H
