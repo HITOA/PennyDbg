@@ -1,17 +1,15 @@
 #include "pennydbg.h"
-#include <iostream>
 
-PennyDbg::PennyDbg(PPennyDbgStruct dbgStruct, QObject *parent) : QThread(parent)
+PennyDbg::PennyDbg(LPDebuggedProcessData pPData, QObject *parent) : QThread(parent)
 {
-    this->dbgStruct = *dbgStruct;
-    needUpdate = FALSE;
+    this->pData = *pPData;
 }
 
 void PennyDbg::run() {
     int c;
-    switch (dbgStruct.startMode) {
+    switch (pData.GetDbgStartMode()) {
         case Open: {
-            emit console_log((QString)"Open Process : "+QString::fromStdWString(dbgStruct.path));
+            emit console_log((QString)"Open Process : "+QString::fromStdWString(pData.GetFullPath()));
             c = OpenProcess();
             break;
         }
@@ -26,7 +24,7 @@ void PennyDbg::run() {
     }
     if (c) {
         exec();
-        CloseHandle(dbgStruct.hProcess);
+        CloseHandle(pData.GetProcessHandle());
     }else {
         emit console_err("Error, can't attach or open the process.");
     }
@@ -84,20 +82,16 @@ void PennyDbg::exec() {
     }
 }
 
-void PennyDbg::on_gui_update() {
-    if (needUpdate) {
-        //TODO : Update gui
-        emit modules_update(dbgStruct.pennyDebuggedProcess.modules);
-        needUpdate = FALSE;
-    }
+LPDebuggedProcessData PennyDbg::GetPtrToProcessData() {
+    return &pData;
 }
 
 int PennyDbg::OpenProcess() {
     STARTUPINFO si{ 0 };
     PROCESS_INFORMATION pi{ 0 };
-    if (CreateProcessW(dbgStruct.path.c_str(), NULL, NULL, NULL, FALSE, CREATE_SUSPENDED | DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS, NULL, NULL, &si, &pi)) {
-        dbgStruct.hProcess = pi.hProcess;
-        dbgStruct.dwProcessId = pi.dwProcessId;
+    if (CreateProcessW(pData.GetFullPath().c_str(), NULL, NULL, NULL, FALSE, CREATE_SUSPENDED | DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS, NULL, NULL, &si, &pi)) {
+        pData.SetProcessHandle(pi.hProcess);
+        pData.SetProcessId(pi.dwProcessId);
         ResumeThread(pi.hThread);
         return PENNY_DBG_SUCCESS;
     }
@@ -105,21 +99,19 @@ int PennyDbg::OpenProcess() {
 }
 
 int PennyDbg::AttachProcess() {
-    HANDLE hProcess = ::OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, NULL, dbgStruct.dwProcessId);
+    HANDLE hProcess = ::OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, NULL, pData.GetProcessId());
     if (hProcess) {
-        if (DebugActiveProcess(dbgStruct.dwProcessId)) {
-            dbgStruct.hProcess = hProcess;
+        if (DebugActiveProcess(pData.GetProcessId())) {
+            pData.SetProcessHandle(hProcess);
             return PENNY_DBG_SUCCESS;
         }
     }
     return PENNY_DBG_ERROR;
 }
 
-void PennyDbg::AddModuleToList(PNMODULE module) {
-    dbgStruct.pennyDebuggedProcess.modules.insert({module.moduleBaseAddr,module});
-    needUpdate = TRUE;
-    //emit console_log(QString("Module : 0x%1 : %2 loaded.").arg((quintptr)module.moduleBaseAddr, QT_POINTER_SIZE * 2, 16,QChar('0')).arg(module.modulePath));
-    //emit modules_update(dbgStruct.pennyDebuggedProcess.modules);
+void PennyDbg::AddLoadedDllData(LoadedDllData loadedDllData) {
+    pData.AddLoadedDllData(loadedDllData);
+    emit loadedDll_GUI_update();
 }
 
 DWORD PennyDbg::OnExceptionDebugEvent(LPDEBUG_EVENT lpdebugEv){
@@ -145,36 +137,36 @@ DWORD PennyDbg::OnExitProcessDebugEvent(LPDEBUG_EVENT lpdebugEv){
 DWORD PennyDbg::OnLoadDllDebugEvent(LPDEBUG_EVENT lpdebugEv){
     LPLOAD_DLL_DEBUG_INFO loadDllDebugInfo = &lpdebugEv->u.LoadDll;
 
-    PNMODULE module;
+    LoadedDllData loadedDllData;
 
     LPCVOID lpModuleFileName = 0;
 
     SIZE_T bytesRead = 0;
     BOOL rpmRet = TRUE;
 
-    if (dbgStruct.pennyDebuggedProcess.ntDllSeen == FALSE) {
+    if (pData.GetSeenNTDLLLoad() == FALSE) {
         wchar_t ntdllname[] = L"\\System32\\ntdll.dll";
-        UINT dlen = GetWindowsDirectoryW(module.modulePath, MAX_PATH);
-        memcpy(module.modulePath + dlen, ntdllname, sizeof(ntdllname) + 1);
-        module.moduleName = module.modulePath + dlen + 20;
-        dbgStruct.pennyDebuggedProcess.ntDllSeen = TRUE;
+        UINT dlen = GetWindowsDirectoryW(loadedDllData.fullPath, MAX_PATH);
+        memcpy(loadedDllData.fullPath + dlen, ntdllname, sizeof(ntdllname) + 1);
+        loadedDllData.fullName = loadedDllData.fullPath + dlen + 20;
+        pData.SetSeenNTDLLLoad();
     }else {
-        rpmRet = ::ReadProcessMemory(dbgStruct.hProcess, loadDllDebugInfo->lpImageName, &lpModuleFileName, sizeof(LPCVOID), &bytesRead);
+        rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), loadDllDebugInfo->lpImageName, &lpModuleFileName, sizeof(LPCVOID), &bytesRead);
 
         if ((rpmRet == TRUE) && (lpModuleFileName != 0)) {
             if (loadDllDebugInfo->fUnicode) {
                 //UNICODE
                 DWORD dwSize = MAX_PATH * sizeof(wchar_t);
                 do {
-                    rpmRet = ::ReadProcessMemory(dbgStruct.hProcess, lpModuleFileName, &module.modulePath, dwSize, &bytesRead);
+                    rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), lpModuleFileName, &loadedDllData.fullPath, dwSize, &bytesRead);
                     dwSize -= 20;
                 } while ((rpmRet == FALSE) && (dwSize > 20));
             }else {
                 //ASCII
                 char tcName[MAX_PATH];
-                rpmRet = ::ReadProcessMemory(dbgStruct.hProcess, lpModuleFileName, &tcName, MAX_PATH, &bytesRead);
+                rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), lpModuleFileName, &tcName, MAX_PATH, &bytesRead);
                 if (rpmRet == TRUE) {
-                    mbstowcs_s(&bytesRead, module.modulePath, MAX_PATH, tcName, _TRUNCATE);
+                    mbstowcs_s(&bytesRead, loadedDllData.fullPath, MAX_PATH, tcName, _TRUNCATE);
                 }
             }
         }else {
@@ -182,9 +174,9 @@ DWORD PennyDbg::OnLoadDllDebugEvent(LPDEBUG_EVENT lpdebugEv){
         }
     }
 
-    module.moduleBaseAddr = loadDllDebugInfo->lpBaseOfDll;
+    loadedDllData.lpBaseOfDll = loadDllDebugInfo->lpBaseOfDll;
 
-    AddModuleToList(module);
+    AddLoadedDllData(loadedDllData);
 
     CloseHandle(loadDllDebugInfo->hFile);
     return DBG_CONTINUE;

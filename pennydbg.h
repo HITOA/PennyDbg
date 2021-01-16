@@ -4,50 +4,23 @@
 #define PENNY_DBG_ERROR 0
 #define PENNY_DBG_SUCCESS 1
 
-#define PENNY_GUI_UPDATE_TIMER 1000
-
 #include <QThread>
 #include <windows.h>
-
-enum DbgStartMode {
-    Open,
-    Attach
-};
-
-typedef struct _PNMODULE {
-    wchar_t modulePath[MAX_PATH];
-    wchar_t *moduleName;
-    LPVOID moduleBaseAddr;
-}PNMODULE, *PPNMODULE;
-
-typedef struct _PennyDebuggedProcess {
-    BOOL ntDllSeen = FALSE;
-    std::map<LPVOID, PNMODULE> modules;
-}PennyDebuggedProcess, *PPennyDebuggedProcess;
-
-typedef struct _PennyDbgStruct {
-    DbgStartMode startMode;
-    std::wstring path;
-    HANDLE hProcess;
-    DWORD dwProcessId;
-    PennyDebuggedProcess pennyDebuggedProcess;
-}PennyDbgStruct, *PPennyDbgStruct;
+#include "debuggedprocessdata.h"
 
 class PennyDbg : public QThread
 {
     Q_OBJECT
 public:
-    explicit PennyDbg(PPennyDbgStruct dbgStruct, QObject *parent = nullptr);
+    explicit PennyDbg(LPDebuggedProcessData pPData, QObject *parent = nullptr);
     void run() override;
     void exec();
-public slots:
-    void on_gui_update();
+    LPDebuggedProcessData GetPtrToProcessData();
 private:
-    PennyDbgStruct dbgStruct;
-    BOOL needUpdate;
+    DebuggedProcessData pData;
     int OpenProcess();
     int AttachProcess();
-    void AddModuleToList(PNMODULE module);
+    void AddLoadedDllData(LoadedDllData loadedDllData);
     //Debug Event Handle
     DWORD OnExceptionDebugEvent(LPDEBUG_EVENT lpdebugEv);
     DWORD OnCreateThreadDebugEvent(LPDEBUG_EVENT lpdebugEv);
@@ -61,7 +34,8 @@ private:
 signals:
     void console_log(QString txt); //send log to the console
     void console_err(QString txt); //send error to the console
-    void modules_update(std::map<LPVOID, PNMODULE> modules); //update all modules show on the interface
+
+    void loadedDll_GUI_update(); //update all modules show on the interface
 };
 
 #endif // PENNYDBG_H

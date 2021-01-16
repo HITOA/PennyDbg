@@ -6,7 +6,6 @@ PennyGUI::PennyGUI(QWidget *parent)
     , ui(new Ui::PennyGUI)
 {
     ui->setupUi(this);
-    pennyGUIUpdateTimer = new QTimer(this);
 }
 
 PennyGUI::~PennyGUI()
@@ -17,20 +16,19 @@ PennyGUI::~PennyGUI()
     delete ui;
 }
 
-void PennyGUI::InitDbg(PPennyDbgStruct dbgStruct) {
-    dbg = new PennyDbg(dbgStruct, this);
+void PennyGUI::InitDbg(LPDebuggedProcessData pPData) {
+    dbg = new PennyDbg(pPData, this);
 
     //Console related dbg emitter
     connect(dbg, &PennyDbg::console_log, this, &PennyGUI::on_console_log);
     connect(dbg, &PennyDbg::console_err, this, &PennyGUI::on_console_err);
-    //Modules tab related dbg emitter
-    connect(dbg, &PennyDbg::modules_update, this, &PennyGUI::on_modules_update);
+    //GUI update related dbg emitter
+    connect(dbg, &PennyDbg::loadedDll_GUI_update, this, &PennyGUI::on_loadedDll_GUI_update);
 
     dbg->start();
 
-    connect(pennyGUIUpdateTimer, &QTimer::timeout, dbg, &PennyDbg::on_gui_update);
-
-    pennyGUIUpdateTimer->start(PENNY_GUI_UPDATE_TIMER);
+    lpLoadedDllTableModel = new LoadedDllTableModel(dbg->GetPtrToProcessData(),this);
+    ui->ModulesTable->setModel(lpLoadedDllTableModel);
 }
 
 //--------DBG SLOTS
@@ -46,17 +44,10 @@ void PennyGUI::on_console_err(QString txt) {
     ui->ConsoleBrowser->setText(ui->ConsoleBrowser->toPlainText()+txt+"\n");
 }
 
-void PennyGUI::on_modules_update(std::map<LPVOID, PNMODULE> modules) {
-    modulesListModel = new ModulesListModel(this);
-    std::for_each(modules.begin(),modules.end(), [this](std::pair<const LPVOID, PNMODULE> &pair){
-        ModuleListStruct moduleListStruct;
-        moduleListStruct.moduleName = QString::fromStdWString(pair.second.modulePath);
-        moduleListStruct.baseAdress = QString("0x%1").arg((quintptr)pair.second.moduleBaseAddr, QT_POINTER_SIZE * 2, 16,QChar('0'));
-        moduleListStruct.moduleSize = QString::number(10);
-        moduleListStruct.Description = "connard";
-        modulesListModel->AddItem(moduleListStruct);
-    });
-    ui->ModulesTable->setModel(modulesListModel);
+//GUI update related
+
+void PennyGUI::on_loadedDll_GUI_update() {
+    lpLoadedDllTableModel->updateGUI();
 }
 
 //--------FILE MENU
@@ -73,11 +64,9 @@ void PennyGUI::on_actionOpen_Process_triggered()
     }
 
     if (fileNames.size() > 0) {
-        PennyDbgStruct dbgStruct;
-        dbgStruct.startMode = Open;
-        dbgStruct.path = fileNames.at(0).toStdWString();
+        DebuggedProcessData pData(fileNames.at(0).toStdWString());
 
-        InitDbg(&dbgStruct);
+        InitDbg(&pData);
     }
 }
 

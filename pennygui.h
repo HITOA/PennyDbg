@@ -6,7 +6,7 @@
 #include <QMessageBox>
 #include <QTimer>
 #include "pennydbg.h"
-#include "moduleslistmodel.h"
+#include "loadeddlltablemodel.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class PennyGUI; }
@@ -22,7 +22,7 @@ public:
 private slots:
     void on_console_log(QString txt);
     void on_console_err(QString txt);
-    void on_modules_update(std::map<LPVOID, PNMODULE> modules);
+    void on_loadedDll_GUI_update();
 
     void on_actionConsole_triggered();
 
@@ -30,11 +30,10 @@ private slots:
 
 private:
     PennyDbg *dbg;
-    QTimer *pennyGUIUpdateTimer;
     Ui::PennyGUI *ui;
 
-    ModulesListModel *modulesListModel;
+    LoadedDllTableModel *lpLoadedDllTableModel;
 
-    void InitDbg(PPennyDbgStruct dbgStruct);
+    void InitDbg(LPDebuggedProcessData pPData);
 };
 #endif // PENNYGUI_H
