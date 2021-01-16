@@ -10,10 +10,12 @@ CONFIG += c++11
 
 SOURCES += \
     main.cpp \
+    moduleslistmodel.cpp \
     pennydbg.cpp \
     pennygui.cpp
 
 HEADERS += \
+    moduleslistmodel.h \
     pennydbg.h \
     pennygui.h
 
