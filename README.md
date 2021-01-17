@@ -9,11 +9,11 @@ compile with QT 6.0.0 MSVC2019 64bit.
 It look like this for now : 
 ![PennyDbg](https://i.imgur.com/CTvzR8e.png)
 
+(yes it's pretty empty D:)
+
 # TODO :
-LoadDllEvent with a list of all dll in the debugged process. (Almost Done)
+Hex View
 
-Hex View of the memory of the process.
+CreateThread/Process and ExitThread/Process event handle. (started)
 
-CreateThread/Process and ExitThread/Process event handle. With a list of all Thread of the debugged process.
-
-It's all the main things i want to do firstly for now.
+Unload and load dll.
