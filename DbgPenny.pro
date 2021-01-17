@@ -20,7 +20,9 @@ HEADERS += \
     loadeddlldata.h \
     loadeddlltablemodel.h \
     pennydbg.h \
-    pennygui.h
+    pennygui.h \
+    processdata.h \
+    threaddata.h
 
 FORMS += \
     pennygui.ui

@@ -3,7 +3,9 @@
 
 #include <iostream>
 #include <vector>
+#include "threaddata.h"
 #include "loadeddlldata.h"
+#include "processdata.h"
 enum DbgStartMode {
     Open,
     Attach
@@ -23,16 +25,24 @@ public:
     void SetProcessId(DWORD dwProcessId);
     BOOL GetSeenNTDLLLoad();
     void SetSeenNTDLLLoad();
+    BOOL GetSeenProcessModule();
+    void SetSeenProcessModule();
     LPLoadedDllData GetLoadedDllData(int index);
     size_t GetLoadedDllsSize();
     void AddLoadedDllData(LoadedDllData loadedDllData);
+    void AddThreadData(ThreadData threadData);
+    LPProcessData GetMainProcessData();
+    void SetMainProcessData(ProcessData processData);
 private:
     DbgStartMode dbgStartMode;
     std::wstring fullPath;
     HANDLE hProcess;
     DWORD dwProcessid;
     BOOL seenNtDllLoad;
+    BOOL seenProcessModule;
+    ProcessData mainProcessData;
     std::vector<LoadedDllData> loadedDlls;
+    std::vector<ThreadData> threads;
 }DebuggedProcessData, *LPDebuggedProcessData;
 
 #endif // _DEBUGGEDPROCESSDATA_H

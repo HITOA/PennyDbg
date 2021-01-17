@@ -28,6 +28,8 @@ private slots:
 
     void on_actionOpen_Process_triggered();
 
+    void on_actionModules_triggered();
+
 private:
     PennyDbg *dbg;
     Ui::PennyGUI *ui;

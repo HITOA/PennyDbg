@@ -76,3 +76,8 @@ void PennyGUI::on_actionConsole_triggered()
 {
     ui->ConsoleWindow->show();
 }
+
+void PennyGUI::on_actionModules_triggered()
+{
+    ui->ModulesWindow->show();
+}

@@ -5,17 +5,21 @@ _DebuggedProcessData::_DebuggedProcessData(std::wstring fullPath)
     this->dbgStartMode = Open;
     this->fullPath = fullPath;
     this->seenNtDllLoad = FALSE;
+    this->seenProcessModule = FALSE;
 }
 
 _DebuggedProcessData::_DebuggedProcessData(DWORD dwProcessId)
 {
     this->dbgStartMode = Attach;
     this->dwProcessid = dwProcessId;
+    this->seenNtDllLoad = FALSE;
+    this->seenProcessModule = FALSE;
 }
 
 _DebuggedProcessData::_DebuggedProcessData()
 {
     this->seenNtDllLoad = FALSE;
+    this->seenProcessModule = FALSE;
 }
 
 DbgStartMode _DebuggedProcessData::GetDbgStartMode() {
@@ -50,6 +54,14 @@ void _DebuggedProcessData::SetSeenNTDLLLoad() {
     this->seenNtDllLoad = TRUE;
 }
 
+BOOL _DebuggedProcessData::GetSeenProcessModule() {
+    return this->seenProcessModule;
+}
+
+void _DebuggedProcessData::SetSeenProcessModule() {
+    this->seenProcessModule = TRUE;
+}
+
 LPLoadedDllData _DebuggedProcessData::GetLoadedDllData(int index) {
     return &loadedDlls.at(index);
 }
@@ -60,4 +72,16 @@ size_t _DebuggedProcessData::GetLoadedDllsSize() {
 
 void _DebuggedProcessData::AddLoadedDllData(LoadedDllData loadedDllData) {
     loadedDlls.push_back(loadedDllData);
+}
+
+void _DebuggedProcessData::AddThreadData(ThreadData threadData) {
+    threads.push_back(threadData);
+}
+
+LPProcessData _DebuggedProcessData::GetMainProcessData() {
+    return &mainProcessData;
+}
+
+void _DebuggedProcessData::SetMainProcessData(ProcessData processData) {
+    this->mainProcessData = processData;
 }

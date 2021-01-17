@@ -33,6 +33,7 @@ void PennyDbg::run() {
 void PennyDbg::exec() {
     DEBUG_EVENT debugEv;
     DWORD c = DBG_CONTINUE;
+
     for(;;) {
         WaitForDebugEvent(&debugEv, INFINITE);
         switch (debugEv.dwDebugEventCode) {
@@ -136,15 +137,94 @@ void PennyDbg::FillLoadedDllData(LPLoadedDllData lpLoadedDllData) {
     free(dllDumpDosHeader);
 }
 
+void PennyDbg::AddThreadData(ThreadData threadData) {
+    pData.AddThreadData(threadData);
+    //emit something()
+}
+
 DWORD PennyDbg::OnExceptionDebugEvent(LPDEBUG_EVENT lpdebugEv){
     return DBG_CONTINUE;
 }
 
 DWORD PennyDbg::OnCreateThreadDebugEvent(LPDEBUG_EVENT lpdebugEv){
+    LPCREATE_THREAD_DEBUG_INFO createThreadDebugInfo = &lpdebugEv->u.CreateThread;
+    ThreadData threadData;
+    threadData.hThread = createThreadDebugInfo->hThread;
+
+    DWORD threadId = GetThreadId(createThreadDebugInfo->hThread);
+    int threadPriority = GetThreadPriority(createThreadDebugInfo->hThread);
+
+    threadData.dwThreadId = threadId;
+    threadData.priority = threadPriority;
+    threadData.lpStartAdress = createThreadDebugInfo->lpStartAddress;
+
+    AddThreadData(threadData);
+
     return DBG_CONTINUE;
 }
 
 DWORD PennyDbg::OnCreateProcessDebugEvent(LPDEBUG_EVENT lpdebugEv){
+    LPCREATE_PROCESS_DEBUG_INFO createProcessDebugInfo = &lpdebugEv->u.CreateProcessInfo;
+
+    ProcessData processData;
+
+    LPCVOID lpModuleFileName = 0;
+
+    SIZE_T bytesRead = 0;
+    BOOL rpmRet = TRUE;
+
+    rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), createProcessDebugInfo->lpImageName, &lpModuleFileName, sizeof(LPCVOID), &bytesRead);
+
+    if (pData.GetSeenProcessModule() == FALSE) {
+        GetModuleFileNameExW(createProcessDebugInfo->hProcess, NULL, processData.fullPath, MAX_PATH);
+
+        int sIndex = 0;
+        for (int i = MAX_PATH; i > 0; i--) {
+            if (processData.fullPath[i] == L'\\' || processData.fullPath[i] == L'/') {
+                sIndex = i;
+                break;
+            }
+        }
+        memcpy(processData.fullName, processData.fullPath + sIndex + 1, sizeof(processData.fullName));
+
+        pData.SetMainProcessData(processData);
+
+        CloseHandle(createProcessDebugInfo->hFile);
+        return DBG_CONTINUE;
+    }else {
+        if ((rpmRet == TRUE) && (lpModuleFileName != 0)) {
+            if (createProcessDebugInfo->fUnicode) {
+                //UNICODE
+                DWORD dwSize = MAX_PATH * sizeof(wchar_t);
+                do {
+                    rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), lpModuleFileName, &processData.fullPath, dwSize, &bytesRead);
+                    dwSize -= 20;
+                } while ((rpmRet == FALSE) && (dwSize > 20));
+            }else {
+                //ASCII
+                char tcName[MAX_PATH];
+                rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), lpModuleFileName, &tcName, MAX_PATH, &bytesRead);
+                if (rpmRet == TRUE) {
+                    mbstowcs_s(&bytesRead, processData.fullPath, MAX_PATH, tcName, _TRUNCATE);
+                }
+            }
+            int sIndex = 0;
+            for (int i = MAX_PATH; i > 0; i--) {
+                if (processData.fullPath[i] == L'\\' || processData.fullPath[i] == L'/') {
+                    sIndex = i;
+                    break;
+                }
+            }
+            memcpy(processData.fullName, processData.fullPath + sIndex + 1, sizeof(processData.fullName));
+        }else {
+            //Todo : Get filename with GetModuleFileNameEx
+        }
+    }
+
+    std::wcout << processData.fullName << std::endl;
+
+    CloseHandle(createProcessDebugInfo->hFile);
+
     return DBG_CONTINUE;
 }
 

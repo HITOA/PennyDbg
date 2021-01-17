@@ -14,7 +14,22 @@
    <string>PennyGUI</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_2"/>
+   <layout class="QVBoxLayout" name="verticalLayout_2">
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <widget class="QWidget" name="tab">
+       <attribute name="title">
+        <string>Tab 1</string>
+       </attribute>
+      </widget>
+      <widget class="QWidget" name="tab_2">
+       <attribute name="title">
+        <string>Tab 2</string>
+       </attribute>
+      </widget>
+     </widget>
+    </item>
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -36,6 +51,7 @@
      <string>Window</string>
     </property>
     <addaction name="actionConsole"/>
+    <addaction name="actionModules"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuWindow"/>
@@ -104,6 +120,11 @@
   <action name="actionConsole">
    <property name="text">
     <string>Console</string>
+   </property>
+  </action>
+  <action name="actionModules">
+   <property name="text">
+    <string>Modules</string>
    </property>
   </action>
  </widget>

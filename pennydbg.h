@@ -7,6 +7,7 @@
 #include <QThread>
 #include <windows.h>
 #include <fstream>
+#include <psapi.h>
 #include "debuggedprocessdata.h"
 
 class PennyDbg : public QThread
@@ -23,6 +24,7 @@ private:
     int AttachProcess();
     void AddLoadedDllData(LoadedDllData loadedDllData);
     void FillLoadedDllData(LPLoadedDllData lpLoadedDllData);
+    void AddThreadData(ThreadData threadData);
     //Debug Event Handle
     DWORD OnExceptionDebugEvent(LPDEBUG_EVENT lpdebugEv);
     DWORD OnCreateThreadDebugEvent(LPDEBUG_EVENT lpdebugEv);
