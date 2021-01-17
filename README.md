@@ -7,7 +7,7 @@ It work on windows, for 64 bit process. the GUI is made with Qt, otherwise it ju
 compile with QT 6.0.0 MSVC2019 64bit.
 
 It look like this for now : 
-![PennyDbg](https://i.imgur.com/CTvzR8e.png)
+![PennyDbg](https://i.imgur.com/OY6p5Y1.png)
 
 (yes it's pretty empty D:)
 
