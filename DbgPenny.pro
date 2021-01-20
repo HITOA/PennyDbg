@@ -13,7 +13,8 @@ SOURCES += \
     loadeddlltablemodel.cpp \
     main.cpp \
     pennydbg.cpp \
-    pennygui.cpp
+    pennygui.cpp \
+    threadtablemodel.cpp
 
 HEADERS += \
     debuggedprocessdata.h \
@@ -22,7 +23,8 @@ HEADERS += \
     pennydbg.h \
     pennygui.h \
     processdata.h \
-    threaddata.h
+    threaddata.h \
+    threadtablemodel.h
 
 FORMS += \
     pennygui.ui

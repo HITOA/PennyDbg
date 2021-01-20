@@ -16,11 +16,18 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
-     <widget class="QTabWidget" name="tabWidget">
-      <widget class="QWidget" name="tab">
+     <widget class="QTabWidget" name="MainTab">
+      <property name="tabsClosable">
+       <bool>true</bool>
+      </property>
+      <property name="movable">
+       <bool>true</bool>
+      </property>
+      <widget class="QWidget" name="HexTab">
        <attribute name="title">
-        <string>Tab 1</string>
+        <string>Hex View</string>
        </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4"/>
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
@@ -52,9 +59,17 @@
     </property>
     <addaction name="actionConsole"/>
     <addaction name="actionModules"/>
+    <addaction name="actionHex_view"/>
+   </widget>
+   <widget class="QMenu" name="menuTool">
+    <property name="title">
+     <string>Tool</string>
+    </property>
+    <addaction name="actionDump_debugged_process"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuWindow"/>
+   <addaction name="menuTool"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="ConsoleWindow">
@@ -112,6 +127,28 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="ThreadsWindow">
+   <property name="windowTitle">
+    <string>Threads</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2">
+    <layout class="QVBoxLayout" name="verticalLayout_5">
+     <item>
+      <widget class="QTableView" name="ThreadsTable">
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionOpen_Process">
    <property name="text">
     <string>Open Process</string>
@@ -125,6 +162,16 @@
   <action name="actionModules">
    <property name="text">
     <string>Modules</string>
+   </property>
+  </action>
+  <action name="actionHex_view">
+   <property name="text">
+    <string>Hex view</string>
+   </property>
+  </action>
+  <action name="actionDump_debugged_process">
+   <property name="text">
+    <string>Dump debugged process</string>
    </property>
   </action>
  </widget>

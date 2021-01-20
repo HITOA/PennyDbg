@@ -74,8 +74,35 @@ void _DebuggedProcessData::AddLoadedDllData(LoadedDllData loadedDllData) {
     loadedDlls.push_back(loadedDllData);
 }
 
+void _DebuggedProcessData::RemoveLoadedDllData(LPVOID lpBaseOfDll) {
+    for (size_t i = 0; i < loadedDlls.size(); i++) {
+        if (loadedDlls.at(i).lpBaseOfDll == lpBaseOfDll) {
+            loadedDlls.erase(loadedDlls.begin() + i);
+            break;
+        }
+    }
+}
+
+
+LPThreadData _DebuggedProcessData::GetThreadData(int index) {
+    return &threads.at(index);
+}
+
+size_t _DebuggedProcessData::GetThreadsSize() {
+    return threads.size();
+}
+
 void _DebuggedProcessData::AddThreadData(ThreadData threadData) {
     threads.push_back(threadData);
+}
+
+void _DebuggedProcessData::RemoveThreadData(DWORD dwThreadId) {
+    for (size_t i = 0; i < threads.size(); i++) {
+        if (threads.at(i).dwThreadId == dwThreadId) {
+            threads.erase(threads.begin() + i);
+            break;
+        }
+    }
 }
 
 LPProcessData _DebuggedProcessData::GetMainProcessData() {

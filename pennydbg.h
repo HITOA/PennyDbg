@@ -8,7 +8,11 @@
 #include <windows.h>
 #include <fstream>
 #include <psapi.h>
+#include <DbgHelp.h>
 #include "debuggedprocessdata.h"
+
+typedef LONG (__stdcall *NtSuspendProcess)(HANDLE ProcessHandle);
+typedef LONG (__stdcall *NtResumeProcess)(HANDLE ProcessHandle);
 
 class PennyDbg : public QThread
 {
@@ -19,12 +23,18 @@ public:
     void exec();
     LPDebuggedProcessData GetPtrToProcessData();
 private:
+    SYSTEM_INFO systemInfo;
     DebuggedProcessData pData;
+    void InitDbg();
     int OpenProcess();
     int AttachProcess();
     void AddLoadedDllData(LoadedDllData loadedDllData);
     void FillLoadedDllData(LPLoadedDllData lpLoadedDllData);
     void AddThreadData(ThreadData threadData);
+    std::vector<MEMORY_BASIC_INFORMATION>  EnumVirtualAllocations();
+    BOOL CheckMemoryInformationAcess(PMEMORY_BASIC_INFORMATION pMemoryInformation);
+    int DumpProcessMemory(std::wstring dumpFileName);
+    int DumpModuleMemory(LPVOID address);
     //Debug Event Handle
     DWORD OnExceptionDebugEvent(LPDEBUG_EVENT lpdebugEv);
     DWORD OnCreateThreadDebugEvent(LPDEBUG_EVENT lpdebugEv);
@@ -40,6 +50,12 @@ signals:
     void console_err(QString txt); //send error to the console
 
     void loadedDll_GUI_update(); //update all modules show on the interface
+    void threads_GUI_update(); //update all threads show on the interface
+
+    //void memorydump_receive();
+public slots:
+    void on_dump_process_memory(std::wstring dumpFileName);
+    void on_dump_module_memory(LPVOID address);
 };
 
 #endif // PENNYDBG_H

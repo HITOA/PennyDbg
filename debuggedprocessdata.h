@@ -30,7 +30,11 @@ public:
     LPLoadedDllData GetLoadedDllData(int index);
     size_t GetLoadedDllsSize();
     void AddLoadedDllData(LoadedDllData loadedDllData);
+    void RemoveLoadedDllData(LPVOID lpBaseOfDll);
+    LPThreadData GetThreadData(int index);
+    size_t GetThreadsSize();
     void AddThreadData(ThreadData threadData);
+    void RemoveThreadData(DWORD dwThreadId);
     LPProcessData GetMainProcessData();
     void SetMainProcessData(ProcessData processData);
 private:

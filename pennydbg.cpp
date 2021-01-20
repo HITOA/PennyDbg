@@ -22,7 +22,9 @@ void PennyDbg::run() {
             break;
         }
     }
+
     if (c) {
+        InitDbg();
         exec();
         CloseHandle(pData.GetProcessHandle());
     }else {
@@ -83,6 +85,11 @@ void PennyDbg::exec() {
     }
 }
 
+void PennyDbg::InitDbg() {
+    GetSystemInfo(&systemInfo);
+    //memset(pDump, 0, (SIZE_T)systemInfo.lpMaximumApplicationAddress);
+}
+
 LPDebuggedProcessData PennyDbg::GetPtrToProcessData() {
     return &pData;
 }
@@ -90,7 +97,7 @@ LPDebuggedProcessData PennyDbg::GetPtrToProcessData() {
 int PennyDbg::OpenProcess() {
     STARTUPINFO si{ 0 };
     PROCESS_INFORMATION pi{ 0 };
-    if (CreateProcessW(pData.GetFullPath().c_str(), NULL, NULL, NULL, FALSE, CREATE_SUSPENDED | DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS, NULL, NULL, &si, &pi)) {
+    if (CreateProcessW(pData.GetFullPath().c_str(), NULL, NULL, NULL, FALSE, CREATE_SUSPENDED | DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS | PROCESS_QUERY_INFORMATION , NULL, NULL, &si, &pi)) {
         pData.SetProcessHandle(pi.hProcess);
         pData.SetProcessId(pi.dwProcessId);
         ResumeThread(pi.hThread);
@@ -100,7 +107,7 @@ int PennyDbg::OpenProcess() {
 }
 
 int PennyDbg::AttachProcess() {
-    HANDLE hProcess = ::OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, NULL, pData.GetProcessId());
+    HANDLE hProcess = ::OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION, NULL, pData.GetProcessId());
     if (hProcess) {
         if (DebugActiveProcess(pData.GetProcessId())) {
             pData.SetProcessHandle(hProcess);
@@ -139,10 +146,93 @@ void PennyDbg::FillLoadedDllData(LPLoadedDllData lpLoadedDllData) {
 
 void PennyDbg::AddThreadData(ThreadData threadData) {
     pData.AddThreadData(threadData);
-    //emit something()
+    emit threads_GUI_update();
+}
+
+std::vector<MEMORY_BASIC_INFORMATION> PennyDbg::EnumVirtualAllocations() {
+    char* p = 0;
+    std::vector<MEMORY_BASIC_INFORMATION> memoryInformations;
+
+    MEMORY_BASIC_INFORMATION memoryInformation;
+
+    while (p < systemInfo.lpMaximumApplicationAddress && ::VirtualQueryEx(pData.GetProcessHandle(), p, &memoryInformation, sizeof(memoryInformation))) {
+        memoryInformations.push_back(memoryInformation);
+        p += memoryInformation.RegionSize;
+    }
+
+    return memoryInformations;
+}
+
+BOOL PennyDbg::CheckMemoryInformationAcess(PMEMORY_BASIC_INFORMATION pMemoryInformation) {
+    if (pMemoryInformation->AllocationProtect == 0) {
+        return FALSE;
+    }
+    if (pMemoryInformation->Protect == PAGE_NOACCESS) {
+        return FALSE;
+    }
+    if (pMemoryInformation->State != MEM_COMMIT) {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+int PennyDbg::DumpProcessMemory(std::wstring dumpFileName) {
+
+
+    std::vector<MEMORY_BASIC_INFORMATION> memoryInformations = EnumVirtualAllocations();
+
+    std::ofstream outF(dumpFileName, std::ios::trunc | std::ios::out | std::ios::binary);
+
+    if (!outF.is_open()) {
+        return PENNY_DBG_ERROR;
+    }
+
+    SIZE_T bytesRead;
+
+    for (MEMORY_BASIC_INFORMATION memoryInformation: memoryInformations) {
+        if (CheckMemoryInformationAcess(&memoryInformation)) {
+            char* buffer = new char[memoryInformation.RegionSize];
+            if (::ReadProcessMemory(pData.GetProcessHandle(), memoryInformation.BaseAddress, buffer, memoryInformation.RegionSize, &bytesRead)) {
+                outF.write(buffer, bytesRead);
+            }
+        }
+    }
+
+    outF.close();
+
+    return PENNY_DBG_SUCCESS;
+}
+
+int PennyDbg::DumpModuleMemory(LPVOID address) {
+    MEMORY_BASIC_INFORMATION memoryInformation;
+
+    ::VirtualQueryEx(pData.GetProcessHandle(), address, &memoryInformation, sizeof(memoryInformation));
+
+    std::ofstream outF("E:/Library/Desktop/XjMLserver/payload/ChessRPG/module.dump", std::ios::trunc | std::ios::out | std::ios::binary);
+
+    SIZE_T bytesRead;
+
+    char* buffer = new char[memoryInformation.RegionSize];
+    if (::ReadProcessMemory(pData.GetProcessHandle(), memoryInformation.BaseAddress, buffer, memoryInformation.RegionSize, &bytesRead)) {
+        outF.write(buffer, bytesRead);
+    }
+
+    std::cout << "size : " << memoryInformation.RegionSize << std::endl;
+
+    outF.close();
+    return PENNY_DBG_SUCCESS;
+}
+
+void PennyDbg::on_dump_process_memory(std::wstring dumpFileName) {
+    DumpProcessMemory(dumpFileName);
+}
+
+void PennyDbg::on_dump_module_memory(LPVOID address) {
+    DumpModuleMemory(address);
 }
 
 DWORD PennyDbg::OnExceptionDebugEvent(LPDEBUG_EVENT lpdebugEv){
+    std::cout << "Exception" << std::endl;
     return DBG_CONTINUE;
 }
 
@@ -229,10 +319,15 @@ DWORD PennyDbg::OnCreateProcessDebugEvent(LPDEBUG_EVENT lpdebugEv){
 }
 
 DWORD PennyDbg::OnExitThreadDebugEvent(LPDEBUG_EVENT lpdebugEv){
+    pData.RemoveThreadData(lpdebugEv->dwThreadId);
+    emit threads_GUI_update();
     return DBG_CONTINUE;
 }
 
 DWORD PennyDbg::OnExitProcessDebugEvent(LPDEBUG_EVENT lpdebugEv){
+    if (lpdebugEv->dwProcessId == pData.GetProcessId()) {
+        emit console_log("Process exit.");
+    }
     return DBG_CONTINUE;
 }
 
@@ -295,13 +390,17 @@ DWORD PennyDbg::OnLoadDllDebugEvent(LPDEBUG_EVENT lpdebugEv){
 }
 
 DWORD PennyDbg::OnUnloadDllDebugEvent(LPDEBUG_EVENT lpdebugEv){
+    pData.RemoveLoadedDllData(lpdebugEv->u.UnloadDll.lpBaseOfDll);
+    emit loadedDll_GUI_update();
     return DBG_CONTINUE;
 }
 
 DWORD PennyDbg::OnOutputDebugStringEvent(LPDEBUG_EVENT lpdebugEv){
+    std::cout << "Debug" << std::endl;
     return DBG_CONTINUE;
 }
 
 DWORD PennyDbg::OnRIPEvent(LPDEBUG_EVENT lpdebugEv) {
+    std::cout << "Rip Event" << std::endl;
     return DBG_CONTINUE;
 }
