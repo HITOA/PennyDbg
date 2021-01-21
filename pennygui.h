@@ -8,6 +8,7 @@
 #include "pennydbg.h"
 #include "loadeddlltablemodel.h"
 #include "threadtablemodel.h"
+#include "modulegui.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class PennyGUI; }
@@ -25,6 +26,7 @@ public:
 signals:
     void dump_process_memory(std::wstring dumpFileName);
     void dump_module_memory(LPVOID address);
+    void memory_scan(char* buffer, size_t bSize);
 private slots:
     void on_console_log(QString txt);
     void on_console_err(QString txt);
@@ -45,9 +47,15 @@ private slots:
 
     void on_ModulesTable_doubleClicked(const QModelIndex &index);
 
+    void on_actionThreads_triggered();
+
+    void on_ScanMemoryBtn_clicked();
+
 private:
     PennyDbg *dbg;
     Ui::PennyGUI *ui;
+
+    ModuleGUI *modulegui;
 
     std::vector<QWidget*> mainTabWidgetList;
 
@@ -55,5 +63,6 @@ private:
     ThreadTableModel *lpThreadTableModel;
 
     void InitDbg(LPDebuggedProcessData pPData);
+    QString ParseSystemTime(SYSTEMTIME sTime);
 };
 #endif // PENNYGUI_H

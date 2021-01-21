@@ -6,6 +6,7 @@ PennyGUI::PennyGUI(QWidget *parent)
     , ui(new Ui::PennyGUI)
 {
     ui->setupUi(this);
+    modulegui = new ModuleGUI(this);
 
     for (int i = 0; i < ui->MainTab->count(); i++) {
         mainTabWidgetList.push_back(ui->MainTab->widget(i));
@@ -32,6 +33,7 @@ void PennyGUI::InitDbg(LPDebuggedProcessData pPData) {
 
     connect(this, &PennyGUI::dump_process_memory, dbg, &PennyDbg::on_dump_process_memory);
     connect(this, &PennyGUI::dump_module_memory, dbg, &PennyDbg::on_dump_module_memory);
+    connect(this, &PennyGUI::memory_scan, dbg, &PennyDbg::on_memory_scan);
 
     dbg->start();
 
@@ -97,6 +99,12 @@ void PennyGUI::on_actionModules_triggered()
     ui->ModulesWindow->show();
 }
 
+
+void PennyGUI::on_actionThreads_triggered()
+{
+    ui->ThreadsWindow->show();
+}
+
 void PennyGUI::on_actionHex_view_triggered()
 {
     ui->MainTab->addTab(mainTabWidgetList.at(0), "Hex view");
@@ -125,5 +133,31 @@ void PennyGUI::on_actionDump_debugged_process_triggered()
 
 void PennyGUI::on_ModulesTable_doubleClicked(const QModelIndex &index)
 {
-    emit dump_module_memory(dbg->GetPtrToProcessData()->GetLoadedDllData(index.row())->lpBaseOfDll);
+    DebuggedProcessData *ppData = dbg->GetPtrToProcessData();
+
+    LPLoadedDllData data = ppData->GetLoadedDllData(index.row());
+
+    modulegui->SetModuleInformation(QString::fromStdWString(data->fullName),
+                                    "?",
+                                    QString::fromStdWString(data->fullPath),
+                                    QString::number(data->dllMappedSize),
+                                    QString::number(data->dllDiskSize),
+                                    ParseSystemTime(data->creationTime),
+                                    ParseSystemTime(data->lastWriteTime),
+                                    ParseSystemTime(data->lastAcessTime));
+    modulegui->show();
+    //DebuggedProcessData *ppData = dbg->GetPtrToProcessData();
+    //emit dump_module_memory((LPBYTE)ppData->GetLoadedDllData(index.row())->lpBaseOfDll + ppData->GetLoadedDllData(index.row())->entryPoint);
+}
+
+void PennyGUI::on_ScanMemoryBtn_clicked()
+{
+    char* buffer = (char*)"Chess";
+    size_t bSize = 5;
+    emit memory_scan(buffer, bSize);
+}
+//utils
+
+QString PennyGUI::ParseSystemTime(SYSTEMTIME sTime) {
+    return QString::number(sTime.wDay) + "/" + QString::number(sTime.wMonth) + "/" + QString::number(sTime.wYear) + ", " + QString::number(sTime.wHour) + ":" + QString::number(sTime.wMinute) + ":" + QString::number(sTime.wSecond);
 }

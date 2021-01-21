@@ -12,6 +12,7 @@ SOURCES += \
     debuggedprocessdata.cpp \
     loadeddlltablemodel.cpp \
     main.cpp \
+    modulegui.cpp \
     pennydbg.cpp \
     pennygui.cpp \
     threadtablemodel.cpp
@@ -20,6 +21,7 @@ HEADERS += \
     debuggedprocessdata.h \
     loadeddlldata.h \
     loadeddlltablemodel.h \
+    modulegui.h \
     pennydbg.h \
     pennygui.h \
     processdata.h \
@@ -27,6 +29,7 @@ HEADERS += \
     threadtablemodel.h
 
 FORMS += \
+    modulegui.ui \
     pennygui.ui
 
 # Default rules for deployment.

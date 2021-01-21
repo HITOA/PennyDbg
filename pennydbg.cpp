@@ -133,10 +133,21 @@ void PennyDbg::FillLoadedDllData(LPLoadedDllData lpLoadedDllData) {
         rpmRet = ::ReadProcessMemory(pData.GetProcessHandle(), (LPBYTE)lpLoadedDllData->lpBaseOfDll + dllDumpDosHeader->e_lfanew, dllDumpNtHeader, sizeof(IMAGE_NT_HEADERS), &bytesRead);
         if ((rpmRet == TRUE) && (dllDumpNtHeader->Signature == IMAGE_NT_SIGNATURE)) {
             lpLoadedDllData->dllMappedSize = dllDumpNtHeader->OptionalHeader.SizeOfImage;
+            lpLoadedDllData->entryPoint = dllDumpNtHeader->OptionalHeader.AddressOfEntryPoint;
+
             std::ifstream module(lpLoadedDllData->fullPath, std::ios::binary);
             module.seekg(0, module.end);
             lpLoadedDllData->dllDiskSize = module.tellg();
             module.close();
+
+            LPWIN32_FILE_ATTRIBUTE_DATA fileAttrData = (LPWIN32_FILE_ATTRIBUTE_DATA)malloc(sizeof(WIN32_FILE_ATTRIBUTE_DATA ));
+            GetFileAttributesExW(lpLoadedDllData->fullPath, GetFileExInfoStandard, fileAttrData);
+
+            ::FileTimeToSystemTime(&fileAttrData->ftCreationTime, &lpLoadedDllData->creationTime);
+            ::FileTimeToSystemTime(&fileAttrData->ftLastWriteTime, &lpLoadedDllData->lastWriteTime);
+            ::FileTimeToSystemTime(&fileAttrData->ftLastAccessTime, &lpLoadedDllData->lastAcessTime);
+
+            free(fileAttrData);
         }
     }
 
@@ -223,12 +234,44 @@ int PennyDbg::DumpModuleMemory(LPVOID address) {
     return PENNY_DBG_SUCCESS;
 }
 
+int PennyDbg::ScanMemory(char* buffer, size_t bSize) {
+    std::vector<MEMORY_BASIC_INFORMATION> memoryInformations = EnumVirtualAllocations();
+
+    SIZE_T bytesRead;
+
+    uint tt = 0;
+
+    printf("Starting");
+
+    for (MEMORY_BASIC_INFORMATION memoryInformation: memoryInformations) {
+        if (CheckMemoryInformationAcess(&memoryInformation)) {
+            char* tmpbuffer = new char[memoryInformation.RegionSize];
+            if (::ReadProcessMemory(pData.GetProcessHandle(), memoryInformation.BaseAddress, tmpbuffer, memoryInformation.RegionSize, &bytesRead)) {
+                for (size_t i = 0; i < (bytesRead - bSize); i++) {
+                    if (memcmp(buffer, &tmpbuffer[i], bSize) == 0) {
+                        tt++;
+                    }
+                }
+            }
+        }
+    }
+
+    std::cout << tt << std::endl;
+
+    return PENNY_DBG_SUCCESS;
+}
+
 void PennyDbg::on_dump_process_memory(std::wstring dumpFileName) {
     DumpProcessMemory(dumpFileName);
+    emit console_log("Memory dump done!");
 }
 
 void PennyDbg::on_dump_module_memory(LPVOID address) {
     DumpModuleMemory(address);
+}
+
+void PennyDbg::on_memory_scan(char* buffer, size_t bSize) {
+    ScanMemory(buffer, bSize);
 }
 
 DWORD PennyDbg::OnExceptionDebugEvent(LPDEBUG_EVENT lpdebugEv){
@@ -282,6 +325,7 @@ DWORD PennyDbg::OnCreateProcessDebugEvent(LPDEBUG_EVENT lpdebugEv){
         CloseHandle(createProcessDebugInfo->hFile);
         return DBG_CONTINUE;
     }else {
+        emit console_log("Process created, PID : "+QString::number(lpdebugEv->dwProcessId));
         if ((rpmRet == TRUE) && (lpModuleFileName != 0)) {
             if (createProcessDebugInfo->fUnicode) {
                 //UNICODE

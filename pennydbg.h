@@ -35,6 +35,7 @@ private:
     BOOL CheckMemoryInformationAcess(PMEMORY_BASIC_INFORMATION pMemoryInformation);
     int DumpProcessMemory(std::wstring dumpFileName);
     int DumpModuleMemory(LPVOID address);
+    int ScanMemory(char* buffer, size_t bSize);
     //Debug Event Handle
     DWORD OnExceptionDebugEvent(LPDEBUG_EVENT lpdebugEv);
     DWORD OnCreateThreadDebugEvent(LPDEBUG_EVENT lpdebugEv);
@@ -56,6 +57,7 @@ signals:
 public slots:
     void on_dump_process_memory(std::wstring dumpFileName);
     void on_dump_module_memory(LPVOID address);
+    void on_memory_scan(char* buffer, size_t bSize);
 };
 
 #endif // PENNYDBG_H
